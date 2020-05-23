@@ -24,9 +24,24 @@ commands:
           command: |
             ./build-setup.sh fast
 
+  scala-build:
+    description: "Run firesim's build-setup.sh"
+    steps:
+      - run:
+          command: |
+            source env.sh
+            make -C sim TARGET_PROJECT=firesim sbt SBT_COMMAND=test:compile
+      - save_cache:
+          key: repo-{{ .Revision }}
+          paths:
+            - "."
+
   firesimtest-manual-midasexamples:
     description: "Run a test"
     steps:
+      - restore_cache:
+          keys:
+          - repo-{{ .Revision }}
       - run:
           command: |
             source env.sh
@@ -41,19 +56,38 @@ commands:
             make -C sim scaladoc
 
 jobs:
-  runall:
+  repo-setup:
     executor: main-env
     steps:
       - checkout
       - machinelaunchscript
       - buildsetup
-      - firesimtest-manual-midasexamples
-      - build-scala-doc
+      - scala-build
 
+  run-scala-test:
+    executor: main-env
+    steps:
+      - firesimtest-manual-midasexamples
+
+  build-scala-doc:
+    executor: main-env
+    steps:
+      - restore_cache:
+          keys:
+          - repo-{{ .Revision }}
+      - build-scala-doc
 
 workflows:
    version: 2
 
    firesimCIall:
      jobs:
-       - runall
+       - repo-setup
+
+       - run-scala-test:
+           requires:
+             - repo-setup
+
+       - build-scala-doc:
+           requires:
+             - repo-setup
