@@ -32,25 +32,9 @@ commands:
             source env.sh
             make -C sim TARGET_PROJECT=firesim sbt SBT_COMMAND=test:compile
 
-  cache-repo:
-    description: "Caches a enormous snapshot of the FireSim repo."
-    steps:
-      - run:
-          command: |
-            # This interacts badly with running machine launch on the instance
-            # we are restoring the cache
-            rm -rf scripts/verilator
-      - save_cache:
-          key: repo-{{ .Revision }}
-          paths:
-            - "."
-
   firesimtest-manual-midasexamples:
     description: "Run a test"
     steps:
-      - restore_cache:
-          keys:
-          - repo-{{ .Revision }}
       - run:
           command: |
             source env.sh
@@ -59,53 +43,53 @@ commands:
   build-scala-doc:
     description: "Compiles Scala Doc"
     steps:
-      - restore_cache:
-          keys:
-          - repo-{{ .Revision }}
       - run:
           command: |
             source env.sh
             make -C sim scaladoc
 
-jobs:
+  push-scaladoc-to-ghpages:
+    description: "Pushes scaladoc to ghphage branch"
+    steps:
+      - run:
+          command: |
+            source env.sh
+            make -C TARGET_PROJECT=firesim sbt SBT_COMMAND=ghpagesPushSite
+
   repo-setup:
-    executor: main-env
+    description: "Runs all baseline setup tasks up to scala compilation."
     steps:
       - checkout
       - machinelaunchscript
       - buildsetup
       - scala-build
-      - cache-repo
 
-  run-scala-test:
+jobs:
+  run-tests:
     executor: main-env
     steps:
-      - restore_cache:
-          keys:
-          - repo-{{ .Revision }}
-      - machinelaunchscript
+      - repo-setup
       - firesimtest-manual-midasexamples
+      - build-scala-doc
 
-  build-scala-doc:
+  publish-scala-doc:
     executor: main-env
     steps:
-      - restore_cache:
-          keys:
-          - repo-{{ .Revision }}
-      - machinelaunchscript
+      - repo-setup
       - build-scala-doc
+      - push-scaladoc-to-ghpages
 
 workflows:
    version: 2
 
    firesimCIall:
      jobs:
-       - repo-setup
+       - run-tests
 
-       - run-scala-test:
-           requires:
-             - repo-setup
+       - publish-scala-doc:
+           filters:
+             branches:
+               only:
+                 - dev
+                 - scala-doc-ci-builds
 
-       - build-scala-doc:
-           requires:
-             - repo-setup
