@@ -75,7 +75,7 @@ lazy val firesimLib = (project in file("firesim-lib"))
 lazy val firesim    = (project in file("."))
   .enablePlugins(ScalaUnidocPlugin, GhpagesPlugin, SiteScaladocPlugin)
   .settings(commonSettings,
-    git.remoteRepo := "git@github.com:firesim/firesim.git",
+    git.remoteRepo := "git@github.com:davidbiancolin/firesim.git",
     unidocProjectFilter in (ScalaUnidoc, unidoc) := inProjects(targetutils, midas, firesimLib),
     siteSubdirName in ScalaUnidoc := "latest/api",
     // Clobber the existing doc task to instead have it use the unified one
