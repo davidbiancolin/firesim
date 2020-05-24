@@ -25,12 +25,21 @@ commands:
             ./build-setup.sh fast
 
   scala-build:
-    description: "Run firesim's build-setup.sh"
+    description: "Compile all relevant Scala sources for CI"
     steps:
       - run:
           command: |
             source env.sh
             make -C sim TARGET_PROJECT=firesim sbt SBT_COMMAND=test:compile
+
+  cache-repo:
+    description: "Caches a enormous snapshot of the FireSim repo."
+    steps:
+      - run:
+          command: |
+            # This interacts badly with running machine launch on the instance
+            # we are restoring the cache
+            rm -rf scripts/verilator
       - save_cache:
           key: repo-{{ .Revision }}
           paths:
@@ -50,6 +59,9 @@ commands:
   build-scala-doc:
     description: "Compiles Scala Doc"
     steps:
+      - restore_cache:
+          keys:
+          - repo-{{ .Revision }}
       - run:
           command: |
             source env.sh
@@ -63,7 +75,7 @@ jobs:
       - machinelaunchscript
       - buildsetup
       - scala-build
-      - build-scala-doc
+      - cache-repo
 
   run-scala-test:
     executor: main-env
