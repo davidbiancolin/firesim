@@ -62,11 +62,15 @@ jobs:
       - checkout
       - machinelaunchscript
       - buildsetup
-      - scala-build
+      - build-scala-doc
 
   run-scala-test:
     executor: main-env
     steps:
+      - restore_cache:
+          keys:
+          - repo-{{ .Revision }}
+      - machinelaunchscript
       - firesimtest-manual-midasexamples
 
   build-scala-doc:
@@ -75,6 +79,7 @@ jobs:
       - restore_cache:
           keys:
           - repo-{{ .Revision }}
+      - machinelaunchscript
       - build-scala-doc
 
 workflows:
