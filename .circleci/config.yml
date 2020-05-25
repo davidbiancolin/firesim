@@ -52,9 +52,9 @@ commands:
     description: "Pushes scaladoc to ghphage branch"
     steps:
       - run:
-          - command: |
-              git config --global user.email "biancolin@berkeley.edu"
-              git config --global user.name "circle-ci-buildbot"
+          command: |
+            git config --global user.email "biancolin@berkeley.edu"
+            git config --global user.name "circleci"
       - when:
           condition: << pipeline.git.tag >>
           steps:
