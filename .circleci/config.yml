@@ -51,6 +51,10 @@ commands:
   push-scaladoc-to-ghpages:
     description: "Pushes scaladoc to ghphage branch"
     steps:
+      - run:
+          - command: |
+              git config --global user.email "biancolin@berkeley.edu"
+              git config --global user.name "circle-ci-buildbot"
       - when:
           condition: << pipeline.git.tag >>
           steps:
