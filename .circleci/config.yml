@@ -69,6 +69,9 @@ commands:
   repo-setup:
     description: "Runs all baseline setup tasks up to scala compilation."
     steps:
+      - add_ssh_keys:
+          fingerprint:
+            - 68:79:0a:48:cd:76:ec:84:49:b7:96:3e:29:8b:02:08
       - checkout
       - machinelaunchscript
       - buildsetup
