@@ -30,7 +30,7 @@ commands:
       - run:
           command: |
             source env.sh
-            make -C sim TARGET_PROJECT=firesim sbt SBT_COMMAND=test:compile
+            make -C sim TARGET_PROJECT=midasexamples sbt SBT_COMMAND=test:compile
 
   firesimtest-manual-midasexamples:
     description: "Run a test"
@@ -51,10 +51,20 @@ commands:
   push-scaladoc-to-ghpages:
     description: "Pushes scaladoc to ghphage branch"
     steps:
-      - run:
-          command: |
-            source env.sh
-            make -C sim TARGET_PROJECT=firesim sbt SBT_COMMAND=ghpagesPushSite
+      - when:
+          condition: << pipeline.git.tag >>
+          steps:
+          - run:
+              command: |
+                source env.sh
+                make -C sim TARGET_PROJECT=midasexamples sbt SBT_COMMAND="set apiDirectory := \"<< pipeline.git.tag >>\"; ghpagesPushSite"
+      - unless:
+          condition: << pipeline.git.tag >>
+          steps:
+          - run:
+              command: |
+                source env.sh
+                make -C sim TARGET_PROJECT=midasexamples sbt SBT_COMMAND="ghpagesPushSite"
 
   repo-setup:
     description: "Runs all baseline setup tasks up to scala compilation."
@@ -92,4 +102,7 @@ workflows:
                only:
                  - dev
                  - scala-doc-ci-builds
+             tags:
+               only:
+                 - /[0-9]*.[0-9]*.[0-9]*/
 
