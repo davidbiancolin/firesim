@@ -6,7 +6,7 @@ executors:
       - image: firesim/firesim-ci:wip-git
         user: "centos"
     environment:
-        JVM_MEMORY: 2200m # Customize the JVM maximum heap limit
+        JVM_MEMORY: 3200m # Customize the JVM maximum heap limit
         LANG: en_US.UTF-8 # required by sbt when it sees boost directories
 
 commands:
