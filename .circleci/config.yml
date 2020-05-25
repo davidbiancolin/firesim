@@ -54,7 +54,7 @@ commands:
       - run:
           command: |
             source env.sh
-            make -C TARGET_PROJECT=firesim sbt SBT_COMMAND=ghpagesPushSite
+            make -C sim TARGET_PROJECT=firesim sbt SBT_COMMAND=ghpagesPushSite
 
   repo-setup:
     description: "Runs all baseline setup tasks up to scala compilation."
