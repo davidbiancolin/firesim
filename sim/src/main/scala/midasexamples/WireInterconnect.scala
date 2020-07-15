@@ -3,9 +3,9 @@
 
 package firesim.midasexamples
 
+import freechips.rocketchip.config.Parameters
 import chisel3._
 import chisel3.util._
-import chisel3.experimental.MultiIOModule
 
 class PipeModule[T <: Data](gen: T, latency: Int = 0) extends MultiIOModule {
   val in   = IO(Input(gen))
@@ -39,4 +39,4 @@ class WireInterconnectDUT extends Module {
   io.bOut := PipeModule(io.bIn, 1)
 }
 
-class WireInterconnect extends PeekPokeMidasExampleHarness(() => new WireInterconnectDUT)
+class WireInterconnect(implicit p: Parameters) extends PeekPokeMidasExampleHarness(() => new WireInterconnectDUT)

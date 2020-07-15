@@ -8,6 +8,9 @@
 #include "bridges/simplenic.h"
 #include "bridges/blockdev.h"
 #include "bridges/tracerv.h"
+#include "bridges/groundtest.h"
+#include "bridges/autocounter.h"
+#include "bridges/dromajo.h"
 
 // Golden Gate provided bridge drivers
 #include "bridges/fpga_model.h"
@@ -34,15 +37,25 @@ firesim_top_t::firesim_top_t(int argc, char** argv)
     }
 
 
-#ifdef UARTBRIDGEMODULE_struct_guard
+// DOC include start: UART Bridge Driver Registration
+    // Here we instantiate our driver once for each bridge in the target
+    // Golden Gate emits a <BridgeModuleClassName>_<id>_PRESENT macro for each instance
+    // which you may use to conditionally instantiate your driver
     #ifdef UARTBRIDGEMODULE_0_PRESENT
+    // Create an instance of the constructor argument (this has all of
+    // addresses of the BridgeModule's memory mapped registers)
     UARTBRIDGEMODULE_0_substruct_create;
+    // Instantiate the driver; register it in the main simulation class
     add_bridge_driver(new uart_t(this, UARTBRIDGEMODULE_0_substruct, 0));
     #endif
+
+    // Repeat the code above with modified indices as many times as necessary
+    // to support the maximum expected number of bridge instances
     #ifdef UARTBRIDGEMODULE_1_PRESENT
     UARTBRIDGEMODULE_1_substruct_create;
     add_bridge_driver(new uart_t(this, UARTBRIDGEMODULE_1_substruct, 1));
     #endif
+// DOC include end: UART Bridge Driver Registration
     #ifdef UARTBRIDGEMODULE_2_PRESENT
     UARTBRIDGEMODULE_2_substruct_create;
     add_bridge_driver(new uart_t(this, UARTBRIDGEMODULE_2_substruct, 2));
@@ -67,164 +80,104 @@ firesim_top_t::firesim_top_t(int argc, char** argv)
     UARTBRIDGEMODULE_7_substruct_create;
     add_bridge_driver(new uart_t(this, UARTBRIDGEMODULE_7_substruct, 7));
     #endif
-#endif
 
-std::vector<uint64_t> host_mem_offsets;
-uint64_t host_mem_offset = -0x80000000LL;
-#ifdef FASEDMEMORYTIMINGMODEL_0
-    fpga_models.push_back(new FASEDMemoryTimingModel(
-                this,
-                // Casts are required for now since the emitted type can change...
-                AddressMap(FASEDMEMORYTIMINGMODEL_0_R_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_0_R_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_0_R_names,
-                    FASEDMEMORYTIMINGMODEL_0_W_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_0_W_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_0_W_names),
-                argc, argv, "memory_stats.csv", 1L << FASEDMEMORYTIMINGMODEL_0_target_addr_bits, host_mem_offset));
-     host_mem_offsets.push_back(host_mem_offset);
-     host_mem_offset += (1ULL << FASEDMEMORYTIMINGMODEL_0_target_addr_bits);
-#endif
+    #ifdef FASEDMEMORYTIMINGMODEL_0
+    INSTANTIATE_FASED(fpga_models.push_back, 0)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_1
+    INSTANTIATE_FASED(fpga_models.push_back, 1)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_2
+    INSTANTIATE_FASED(fpga_models.push_back, 2)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_3
+    INSTANTIATE_FASED(fpga_models.push_back, 3)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_4
+    INSTANTIATE_FASED(fpga_models.push_back, 4)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_5
+    INSTANTIATE_FASED(fpga_models.push_back, 5)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_6
+    INSTANTIATE_FASED(fpga_models.push_back, 6)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_7
+    INSTANTIATE_FASED(fpga_models.push_back, 7)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_8
+    INSTANTIATE_FASED(fpga_models.push_back, 8)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_9
+    INSTANTIATE_FASED(fpga_models.push_back, 9)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_10
+    INSTANTIATE_FASED(fpga_models.push_back, 10)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_11
+    INSTANTIATE_FASED(fpga_models.push_back, 11)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_12
+    INSTANTIATE_FASED(fpga_models.push_back, 12)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_13
+    INSTANTIATE_FASED(fpga_models.push_back, 13)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_14
+    INSTANTIATE_FASED(fpga_models.push_back, 14)
+    #endif
+    #ifdef FASEDMEMORYTIMINGMODEL_15
+    INSTANTIATE_FASED(fpga_models.push_back, 15)
+    #endif
 
-#ifdef FASEDMEMORYTIMINGMODEL_1
-    fpga_models.push_back(new FASEDMemoryTimingModel(
-                this,
-                // Casts are required for now since the emitted type can change...
-                AddressMap(FASEDMEMORYTIMINGMODEL_1_R_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_1_R_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_1_R_names,
-                    FASEDMEMORYTIMINGMODEL_1_W_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_1_W_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_1_W_names),
-                argc, argv, "memory_stats1.csv", 1L << FASEDMEMORYTIMINGMODEL_1_target_addr_bits, host_mem_offset));
-     host_mem_offsets.push_back(host_mem_offset);
-     host_mem_offset += 1ULL << FASEDMEMORYTIMINGMODEL_1_target_addr_bits;
-#endif
-
-#ifdef FASEDMEMORYTIMINGMODEL_2
-    fpga_models.push_back(new FASEDMemoryTimingModel(
-                this,
-                // Casts are required for now since the emitted type can change...
-                AddressMap(FASEDMEMORYTIMINGMODEL_2_R_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_2_R_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_2_R_names,
-                    FASEDMEMORYTIMINGMODEL_2_W_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_2_W_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_2_W_names),
-                argc, argv, "memory_stats2.csv", 1L << FASEDMEMORYTIMINGMODEL_2_target_addr_bits, host_mem_offset));
-     host_mem_offsets.push_back(host_mem_offset);
-     host_mem_offset += 1ULL << FASEDMEMORYTIMINGMODEL_2_target_addr_bits;
-#endif
-
-#ifdef FASEDMEMORYTIMINGMODEL_3
-    fpga_models.push_back(new FASEDMemoryTimingModel(
-                this,
-                // Casts are required for now since the emitted type can change...
-                AddressMap(FASEDMEMORYTIMINGMODEL_3_R_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_3_R_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_3_R_names,
-                    FASEDMEMORYTIMINGMODEL_3_W_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_3_W_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_3_W_names),
-                argc, argv, "memory_stats3.csv", 1L << FASEDMEMORYTIMINGMODEL_3_target_addr_bits, host_mem_offset));
-     host_mem_offsets.push_back(host_mem_offset);
-     host_mem_offset += 1ULL << FASEDMEMORYTIMINGMODEL_3_target_addr_bits;
-#endif
-
-#ifdef FASEDMEMORYTIMINGMODEL_4
-    fpga_models.push_back(new FASEDMemoryTimingModel(
-                this,
-                // Casts are required for now since the emitted type can change...
-                AddressMap(FASEDMEMORYTIMINGMODEL_4_R_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_4_R_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_4_R_names,
-                    FASEDMEMORYTIMINGMODEL_4_W_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_4_W_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_4_W_names),
-                argc, argv, "memory_stats4.csv", 1L << FASEDMEMORYTIMINGMODEL_4_target_addr_bits, host_mem_offset));
-     host_mem_offsets.push_back(host_mem_offset);
-     host_mem_offset += 1ULL << FASEDMEMORYTIMINGMODEL_4_target_addr_bits;
-#endif
-
-#ifdef FASEDMEMORYTIMINGMODEL_5
-    fpga_models.push_back(new FASEDMemoryTimingModel(
-                this,
-                // Casts are required for now since the emitted type can change...
-                AddressMap(FASEDMEMORYTIMINGMODEL_5_R_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_5_R_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_5_R_names,
-                    FASEDMEMORYTIMINGMODEL_5_W_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_5_W_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_5_W_names),
-                argc, argv, "memory_stats5.csv", 1L << FASEDMEMORYTIMINGMODEL_5_target_addr_bits, host_mem_offset));
-     host_mem_offsets.push_back(host_mem_offset);
-     host_mem_offset += 1ULL << FASEDMEMORYTIMINGMODEL_5_target_addr_bits;
-#endif
-
-#ifdef FASEDMEMORYTIMINGMODEL_6
-    fpga_models.push_back(new FASEDMemoryTimingModel(
-                this,
-                // Casts are required for now since the emitted type can change...
-                AddressMap(FASEDMEMORYTIMINGMODEL_6_R_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_6_R_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_6_R_names,
-                    FASEDMEMORYTIMINGMODEL_6_W_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_6_W_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_6_W_names),
-                argc, argv, "memory_stats6.csv", 1L << FASEDMEMORYTIMINGMODEL_6_target_addr_bits, host_mem_offset));
-     host_mem_offsets.push_back(host_mem_offset);
-     host_mem_offset += 1ULL << FASEDMEMORYTIMINGMODEL_6_target_addr_bits;
-#endif
-
-#ifdef FASEDMEMORYTIMINGMODEL_7
-    fpga_models.push_back(new FASEDMemoryTimingModel(
-                this,
-                // Casts are required for now since the emitted type can change...
-                AddressMap(FASEDMEMORYTIMINGMODEL_7_R_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_7_R_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_7_R_names,
-                    FASEDMEMORYTIMINGMODEL_7_W_num_registers,
-                    (const unsigned int*) FASEDMEMORYTIMINGMODEL_7_W_addrs,
-                    (const char* const*) FASEDMEMORYTIMINGMODEL_7_W_names),
-                argc, argv, "memory_stats7.csv", 1L << FASEDMEMORYTIMINGMODEL_7_target_addr_bits, host_mem_offset));
-     host_mem_offsets.push_back(host_mem_offset);
-     host_mem_offset += 1ULL << FASEDMEMORYTIMINGMODEL_7_target_addr_bits;
-#endif
-
-#ifdef SERIALBRIDGEMODULE_struct_guard
     #ifdef SERIALBRIDGEMODULE_0_PRESENT
-    SERIALBRIDGEMODULE_0_substruct_create;
-    add_bridge_driver(new serial_t(this, args, SERIALBRIDGEMODULE_0_substruct, 0, host_mem_offsets[0]));
+    INSTANTIATE_SERIAL(add_bridge_driver, 0)
     #endif
     #ifdef SERIALBRIDGEMODULE_1_PRESENT
-    SERIALBRIDGEMODULE_1_substruct_create;
-    add_bridge_driver(new serial_t(this, args, SERIALBRIDGEMODULE_1_substruct, 1, host_mem_offsets[1]));
+    INSTANTIATE_SERIAL(add_bridge_driver, 1)
     #endif
     #ifdef SERIALBRIDGEMODULE_2_PRESENT
-    SERIALBRIDGEMODULE_2_substruct_create;
-    add_bridge_driver(new serial_t(this, args, SERIALBRIDGEMODULE_2_substruct, 2, host_mem_offsets[2]));
+    INSTANTIATE_SERIAL(add_bridge_driver, 2)
     #endif
     #ifdef SERIALBRIDGEMODULE_3_PRESENT
-    SERIALBRIDGEMODULE_3_substruct_create;
-    add_bridge_driver(new serial_t(this, args, SERIALBRIDGEMODULE_3_substruct, 3, host_mem_offsets[3]));
+    INSTANTIATE_SERIAL(add_bridge_driver, 3)
     #endif
     #ifdef SERIALBRIDGEMODULE_4_PRESENT
-    SERIALBRIDGEMODULE_4_substruct_create;
-    add_bridge_driver(new serial_t(this, args, SERIALBRIDGEMODULE_4_substruct, 4, host_mem_offsets[4]));
+    INSTANTIATE_SERIAL(add_bridge_driver, 4)
     #endif
     #ifdef SERIALBRIDGEMODULE_5_PRESENT
-    SERIALBRIDGEMODULE_5_substruct_create;
-    add_bridge_driver(new serial_t(this, args, SERIALBRIDGEMODULE_5_substruct, 5, host_mem_offsets[5]));
+    INSTANTIATE_SERIAL(add_bridge_driver, 5)
     #endif
     #ifdef SERIALBRIDGEMODULE_6_PRESENT
-    SERIALBRIDGEMODULE_6_substruct_create;
-    add_bridge_driver(new serial_t(this, args, SERIALBRIDGEMODULE_6_substruct, 6, host_mem_offsets[6]));
+    INSTANTIATE_SERIAL(add_bridge_driver, 6)
     #endif
     #ifdef SERIALBRIDGEMODULE_7_PRESENT
-    SERIALBRIDGEMODULE_7_substruct_create;
-    add_bridge_driver(new serial_t(this, args, SERIALBRIDGEMODULE_7_substruct, 7, host_mem_offsets[7]));
+    INSTANTIATE_SERIAL(add_bridge_driver, 7)
     #endif
-#endif
+    #ifdef SERIALBRIDGEMODULE_8_PRESENT
+    INSTANTIATE_SERIAL(add_bridge_driver, 8)
+    #endif
+    #ifdef SERIALBRIDGEMODULE_9_PRESENT
+    INSTANTIATE_SERIAL(add_bridge_driver, 9)
+    #endif
+    #ifdef SERIALBRIDGEMODULE_10_PRESENT
+    INSTANTIATE_SERIAL(add_bridge_driver, 10)
+    #endif
+    #ifdef SERIALBRIDGEMODULE_11_PRESENT
+    INSTANTIATE_SERIAL(add_bridge_driver, 11)
+    #endif
+    #ifdef SERIALBRIDGEMODULE_12_PRESENT
+    INSTANTIATE_SERIAL(add_bridge_driver, 12)
+    #endif
+    #ifdef SERIALBRIDGEMODULE_13_PRESENT
+    INSTANTIATE_SERIAL(add_bridge_driver, 13)
+    #endif
+    #ifdef SERIALBRIDGEMODULE_14_PRESENT
+    INSTANTIATE_SERIAL(add_bridge_driver, 14)
+    #endif
+    #ifdef SERIALBRIDGEMODULE_15_PRESENT
+    INSTANTIATE_SERIAL(add_bridge_driver, 15)
+    #endif
 
 #ifdef BLOCKDEVBRIDGEMODULE_struct_guard
     #ifdef BLOCKDEVBRIDGEMODULE_0_PRESENT
@@ -298,59 +251,219 @@ uint64_t host_mem_offset = -0x80000000LL;
 
 #ifdef TRACERVBRIDGEMODULE_struct_guard
     #ifdef TRACERVBRIDGEMODULE_0_PRESENT
-    TRACERVBRIDGEMODULE_0_substruct_create;
-    add_bridge_driver(new tracerv_t(this, args, TRACERVBRIDGEMODULE_0_substruct, 0, TRACERVBRIDGEMODULE_0_DMA_ADDR));
+    INSTANTIATE_TRACERV(add_bridge_driver, 0)
     #endif
     #ifdef TRACERVBRIDGEMODULE_1_PRESENT
-    TRACERVBRIDGEMODULE_1_substruct_create;
-    add_bridge_driver(new tracerv_t(this, args, TRACERVBRIDGEMODULE_1_substruct, 1, TRACERVBRIDGEMODULE_1_DMA_ADDR));
+    INSTANTIATE_TRACERV(add_bridge_driver, 1)
     #endif
     #ifdef TRACERVBRIDGEMODULE_2_PRESENT
-    TRACERVBRIDGEMODULE_2_substruct_create;
-    add_bridge_driver(new tracerv_t(this, args, TRACERVBRIDGEMODULE_2_substruct, 2, TRACERVBRIDGEMODULE_2_DMA_ADDR));
+    INSTANTIATE_TRACERV(add_bridge_driver, 2)
     #endif
     #ifdef TRACERVBRIDGEMODULE_3_PRESENT
-    TRACERVBRIDGEMODULE_3_substruct_create;
-    add_bridge_driver(new tracerv_t(this, args, TRACERVBRIDGEMODULE_3_substruct, 3, TRACERVBRIDGEMODULE_3_DMA_ADDR));
+    INSTANTIATE_TRACERV(add_bridge_driver, 3)
     #endif
     #ifdef TRACERVBRIDGEMODULE_4_PRESENT
-    TRACERVBRIDGEMODULE_4_substruct_create;
-    add_bridge_driver(new tracerv_t(this, args, TRACERVBRIDGEMODULE_4_substruct, 4, TRACERVBRIDGEMODULE_4_DMA_ADDR));
+    INSTANTIATE_TRACERV(add_bridge_driver, 4)
     #endif
     #ifdef TRACERVBRIDGEMODULE_5_PRESENT
-    TRACERVBRIDGEMODULE_5_substruct_create;
-    add_bridge_driver(new tracerv_t(this, args, TRACERVBRIDGEMODULE_5_substruct, 5, TRACERVBRIDGEMODULE_5_DMA_ADDR));
+    INSTANTIATE_TRACERV(add_bridge_driver, 5)
     #endif
     #ifdef TRACERVBRIDGEMODULE_6_PRESENT
-    TRACERVBRIDGEMODULE_6_substruct_create;
-    add_bridge_driver(new tracerv_t(this, args, TRACERVBRIDGEMODULE_6_substruct, 6, TRACERVBRIDGEMODULE_6_DMA_ADDR));
+    INSTANTIATE_TRACERV(add_bridge_driver, 6)
     #endif
     #ifdef TRACERVBRIDGEMODULE_7_PRESENT
-    TRACERVBRIDGEMODULE_7_substruct_create;
-    add_bridge_driver(new tracerv_t(this, args, TRACERVBRIDGEMODULE_7_substruct, 7, TRACERVBRIDGEMODULE_7_DMA_ADDR));
+    INSTANTIATE_TRACERV(add_bridge_driver, 7)
+    #endif
+    #ifdef TRACERVBRIDGEMODULE_8_PRESENT
+    INSTANTIATE_TRACERV(add_bridge_driver, 8)
+    #endif
+    #ifdef TRACERVBRIDGEMODULE_9_PRESENT
+    INSTANTIATE_TRACERV(add_bridge_driver, 9)
+    #endif
+    #ifdef TRACERVBRIDGEMODULE_10_PRESENT
+    INSTANTIATE_TRACERV(add_bridge_driver, 10)
+    #endif
+    #ifdef TRACERVBRIDGEMODULE_11_PRESENT
+    INSTANTIATE_TRACERV(add_bridge_driver, 11)
+    #endif
+    #ifdef TRACERVBRIDGEMODULE_12_PRESENT
+    INSTANTIATE_TRACERV(add_bridge_driver, 12)
+    #endif
+    #ifdef TRACERVBRIDGEMODULE_13_PRESENT
+    INSTANTIATE_TRACERV(add_bridge_driver, 13)
+    #endif
+    #ifdef TRACERVBRIDGEMODULE_14_PRESENT
+    INSTANTIATE_TRACERV(add_bridge_driver, 14)
+    #endif
+    #ifdef TRACERVBRIDGEMODULE_15_PRESENT
+    INSTANTIATE_TRACERV(add_bridge_driver, 15)
     #endif
 #endif
 
-// There can only be one instance of assert and print widgets as their IO is
-// uniquely generated by a FIRRTL transform
+#ifdef DROMAJOBRIDGEMODULE_struct_guard
+    #ifdef DROMAJOBRIDGEMODULE_0_PRESENT
+    DROMAJOBRIDGEMODULE_0_substruct_create;
+    add_bridge_driver(new dromajo_t(
+            this, args,
+            DROMAJOBRIDGEMODULE_0_iaddr_width,
+            DROMAJOBRIDGEMODULE_0_insn_width,
+            DROMAJOBRIDGEMODULE_0_wdata_width,
+            DROMAJOBRIDGEMODULE_0_cause_width,
+            DROMAJOBRIDGEMODULE_0_tval_width,
+            DROMAJOBRIDGEMODULE_0_num_traces,
+            DROMAJOBRIDGEMODULE_0_substruct,
+            DROMAJOBRIDGEMODULE_0_DMA_ADDR));
+    #endif
+#endif
+
+#ifdef GROUNDTESTBRIDGEMODULE_struct_guard
+    #ifdef GROUNDTESTBRIDGEMODULE_0_PRESENT
+    GROUNDTESTBRIDGEMODULE_0_substruct_create;
+    add_bridge_driver(new groundtest_t(
+            this, args, GROUNDTESTBRIDGEMODULE_0_substruct));
+    #endif
+    #ifdef GROUNDTESTBRIDGEMODULE_1_PRESENT
+    GROUNDTESTBRIDGEMODULE_1_substruct_create;
+    add_bridge_driver(new groundtest_t(
+            this, args, GROUNDTESTBRIDGEMODULE_1_substruct));
+    #endif
+    #ifdef GROUNDTESTBRIDGEMODULE_2_PRESENT
+    GROUNDTESTBRIDGEMODULE_2_substruct_create;
+    add_bridge_driver(new groundtest_t(
+            this, args, GROUNDTESTBRIDGEMODULE_2_substruct));
+    #endif
+    #ifdef GROUNDTESTBRIDGEMODULE_3_PRESENT
+    GROUNDTESTBRIDGEMODULE_3_substruct_create;
+    add_bridge_driver(new groundtest_t(
+            this, args, GROUNDTESTBRIDGEMODULE_3_substruct));
+    #endif
+    #ifdef GROUNDTESTBRIDGEMODULE_4_PRESENT
+    GROUNDTESTBRIDGEMODULE_4_substruct_create;
+    add_bridge_driver(new groundtest_t(
+            this, args, GROUNDTESTBRIDGEMODULE_4_substruct));
+    #endif
+    #ifdef GROUNDTESTBRIDGEMODULE_5_PRESENT
+    GROUNDTESTBRIDGEMODULE_5_substruct_create;
+    add_bridge_driver(new groundtest_t(
+            this, args, GROUNDTESTBRIDGEMODULE_5_substruct));
+    #endif
+    #ifdef GROUNDTESTBRIDGEMODULE_6_PRESENT
+    GROUNDTESTBRIDGEMODULE_6_substruct_create;
+    add_bridge_driver(new groundtest_t(
+            this, args, GROUNDTESTBRIDGEMODULE_6_substruct));
+    #endif
+    #ifdef GROUNDTESTBRIDGEMODULE_7_PRESENT
+    GROUNDTESTBRIDGEMODULE_7_substruct_create;
+    add_bridge_driver(new groundtest_t(
+            this, args, GROUNDTESTBRIDGEMODULE_7_substruct));
+    #endif
+#endif
+
+#ifdef AUTOCOUNTERBRIDGEMODULE_0_PRESENT
+    INSTANTIATE_AUTOCOUNTER(add_bridge_driver, 0)
+#endif
+#ifdef AUTOCOUNTERBRIDGEMODULE_1_PRESENT
+    INSTANTIATE_AUTOCOUNTER(add_bridge_driver, 1)
+#endif
+#ifdef AUTOCOUNTERBRIDGEMODULE_2_PRESENT
+    INSTANTIATE_AUTOCOUNTER(add_bridge_driver, 2)
+#endif
+#ifdef AUTOCOUNTERBRIDGEMODULE_3_PRESENT
+    INSTANTIATE_AUTOCOUNTER(add_bridge_driver, 3)
+#endif
+#ifdef AUTOCOUNTERBRIDGEMODULE_4_PRESENT
+    INSTANTIATE_AUTOCOUNTER(add_bridge_driver, 4)
+#endif
+#ifdef AUTOCOUNTERBRIDGEMODULE_5_PRESENT
+    INSTANTIATE_AUTOCOUNTER(add_bridge_driver, 5)
+#endif
+#ifdef AUTOCOUNTERBRIDGEMODULE_6_PRESENT
+    INSTANTIATE_AUTOCOUNTER(add_bridge_driver, 6)
+#endif
+#ifdef AUTOCOUNTERBRIDGEMODULE_7_PRESENT
+    INSTANTIATE_AUTOCOUNTER(add_bridge_driver, 7)
+#endif
+
 #ifdef ASSERTBRIDGEMODULE_0_PRESENT
     ASSERTBRIDGEMODULE_0_substruct_create
-    add_bridge_driver(new synthesized_assertions_t(this, ASSERTBRIDGEMODULE_0_substruct));
+    add_bridge_driver(new synthesized_assertions_t(this,
+                                                   ASSERTBRIDGEMODULE_0_substruct,
+                                                   ASSERTBRIDGEMODULE_0_assert_count,
+                                                   ASSERTBRIDGEMODULE_0_assert_messages));
+#endif
+#ifdef ASSERTBRIDGEMODULE_1_PRESENT
+    ASSERTBRIDGEMODULE_1_substruct_create
+    add_bridge_driver(new synthesized_assertions_t(this,
+                                                   ASSERTBRIDGEMODULE_1_substruct,
+                                                   ASSERTBRIDGEMODULE_1_assert_count,
+                                                   ASSERTBRIDGEMODULE_1_assert_messages));
+#endif
+#ifdef ASSERTBRIDGEMODULE_2_PRESENT
+    ASSERTBRIDGEMODULE_2_substruct_create
+    add_bridge_driver(new synthesized_assertions_t(this,
+                                                   ASSERTBRIDGEMODULE_2_substruct,
+                                                   ASSERTBRIDGEMODULE_2_assert_count,
+                                                   ASSERTBRIDGEMODULE_2_assert_messages));
+#endif
+#ifdef ASSERTBRIDGEMODULE_3_PRESENT
+    ASSERTBRIDGEMODULE_3_substruct_create
+    add_bridge_driver(new synthesized_assertions_t(this,
+                                                   ASSERTBRIDGEMODULE_3_substruct,
+                                                   ASSERTBRIDGEMODULE_3_assert_count,
+                                                   ASSERTBRIDGEMODULE_3_assert_messages));
+#endif
+#ifdef ASSERTBRIDGEMODULE_4_PRESENT
+    ASSERTBRIDGEMODULE_4_substruct_create
+    add_bridge_driver(new synthesized_assertions_t(this,
+                                                   ASSERTBRIDGEMODULE_4_substruct,
+                                                   ASSERTBRIDGEMODULE_4_assert_count,
+                                                   ASSERTBRIDGEMODULE_4_assert_messages));
+#endif
+#ifdef ASSERTBRIDGEMODULE_5_PRESENT
+    ASSERTBRIDGEMODULE_5_substruct_create
+    add_bridge_driver(new synthesized_assertions_t(this,
+                                                   ASSERTBRIDGEMODULE_5_substruct,
+                                                   ASSERTBRIDGEMODULE_5_assert_count,
+                                                   ASSERTBRIDGEMODULE_5_assert_messages));
+#endif
+#ifdef ASSERTBRIDGEMODULE_6_PRESENT
+    ASSERTBRIDGEMODULE_6_substruct_create
+    add_bridge_driver(new synthesized_assertions_t(this,
+                                                   ASSERTBRIDGEMODULE_6_substruct,
+                                                   ASSERTBRIDGEMODULE_6_assert_count,
+                                                   ASSERTBRIDGEMODULE_6_assert_messages));
+#endif
+#ifdef ASSERTBRIDGEMODULE_7_PRESENT
+    ASSERTBRIDGEMODULE_7_substruct_create
+    add_bridge_driver(new synthesized_assertions_t(this,
+                                                   ASSERTBRIDGEMODULE_7_substruct,
+                                                   ASSERTBRIDGEMODULE_7_assert_count,
+                                                   ASSERTBRIDGEMODULE_7_assert_messages));
 #endif
 
 #ifdef PRINTBRIDGEMODULE_0_PRESENT
-    PRINTBRIDGEMODULE_0_substruct_create;
-    add_bridge_driver(new synthesized_prints_t(this,
-                                          args,
-                                          PRINTBRIDGEMODULE_0_substruct,
-                                          PRINTBRIDGEMODULE_0_print_count,
-                                          PRINTBRIDGEMODULE_0_token_bytes,
-                                          PRINTBRIDGEMODULE_0_idle_cycles_mask,
-                                          PRINTBRIDGEMODULE_0_print_offsets,
-                                          PRINTBRIDGEMODULE_0_format_strings,
-                                          PRINTBRIDGEMODULE_0_argument_counts,
-                                          PRINTBRIDGEMODULE_0_argument_widths,
-                                          PRINTBRIDGEMODULE_0_DMA_ADDR));
+    INSTANTIATE_PRINTF(add_bridge_driver,0)
+#endif
+#ifdef PRINTBRIDGEMODULE_1_PRESENT
+    INSTANTIATE_PRINTF(add_bridge_driver,1)
+#endif
+#ifdef PRINTBRIDGEMODULE_2_PRESENT
+    INSTANTIATE_PRINTF(add_bridge_driver,2)
+#endif
+#ifdef PRINTBRIDGEMODULE_3_PRESENT
+    INSTANTIATE_PRINTF(add_bridge_driver,3)
+#endif
+#ifdef PRINTBRIDGEMODULE_4_PRESENT
+    INSTANTIATE_PRINTF(add_bridge_driver,4)
+#endif
+#ifdef PRINTBRIDGEMODULE_5_PRESENT
+    INSTANTIATE_PRINTF(add_bridge_driver,5)
+#endif
+#ifdef PRINTBRIDGEMODULE_6_PRESENT
+    INSTANTIATE_PRINTF(add_bridge_driver,6)
+#endif
+#ifdef PRINTBRIDGEMODULE_7_PRESENT
+    INSTANTIATE_PRINTF(add_bridge_driver,7)
 #endif
     // Add functions you'd like to periodically invoke on a paused simulator here.
     if (profile_interval != -1) {
@@ -392,7 +505,7 @@ void firesim_top_t::run() {
     }
 
     if (do_zero_out_dram) {
-        fprintf(stderr, "Zeroing out FPGA DRAM. This will take a few seconds...\n");
+        fprintf(stderr, "Zeroing out FPGA DRAM. This will take a few minutes...\n");
         zero_out_dram();
     }
     fprintf(stderr, "Commencing simulation.\n");
@@ -431,6 +544,7 @@ void firesim_top_t::run() {
         fprintf(stderr, "time elapsed: %.1f s, simulation speed = %.2f KHz\n", sim_time, sim_speed);
     }
     double fmr = ((double) hcycles / end_cycle);
+    // This returns the FMR of the fastest target clock
     fprintf(stderr, "FPGA-Cycles-to-Model-Cycles Ratio (FMR): %.2f\n", fmr);
     expect(!exitcode, NULL);
 

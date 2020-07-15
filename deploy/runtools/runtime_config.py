@@ -17,7 +17,6 @@ from runtools.run_farm import RunFarm
 from util.streamlogger import StreamLogger
 import os
 
-
 LOCAL_DRIVERS_BASE = "../sim/output/f1/"
 LOCAL_DRIVERS_GENERATED_SRC = "../sim/generated-src/f1/"
 CUSTOM_RUNTIMECONFS_BASE = "../sim/custom-runtime-configs/"
@@ -79,59 +78,25 @@ class RuntimeHWConfig:
             runtime_conf_local = CUSTOM_RUNTIMECONFS_BASE + my_runtimeconfig
         return runtime_conf_local
 
-    # TODO: Delete this and bake the assertion definitions into the Driver
-    def get_local_assert_def_path(self):
-        """ return relative local path of the synthesized assertion definitions. """
-        my_deploytriplet = self.get_deploytriplet_for_config()
-        gen_src_dir = LOCAL_DRIVERS_GENERATED_SRC + "/" + my_deploytriplet + "/"
-        assert_def_local = gen_src_dir + self.get_design_name() + ".asserts"
-        return assert_def_local
-
-    def get_boot_simulation_command(self, macaddr, blkdev, slotid,
-                                    linklatency, netbw, profile_interval, bootbin,
-                                    trace_enable, trace_start, trace_end, shmemportname):
-        """ return the command used to boot the simulation. this has to have
-        some external params passed to it, because not everything is contained
-        in a runtimehwconfig. TODO: maybe runtimehwconfig should be renamed to
-        pre-built runtime config? It kinda contains a mix of pre-built and
-        runtime parameters currently. """
-
-        tracefile = "+tracefile0=TRACEFILE" if trace_enable else ""
-
-        # this monstrosity boots the simulator, inside screen, inside script
-        # the sed is in there to get rid of newlines in runtime confs
-        driver = self.get_local_driver_binaryname()
-        runtimeconf = self.get_local_runtimeconf_binaryname()
-
-        driverArgs = """+permissive $(sed \':a;N;$!ba;s/\\n/ /g\' {runtimeconf}) +macaddr0={macaddr} +slotid={slotid} +niclog0=niclog {tracefile} +trace-start0={trace_start} +trace-end0={trace_end} +linklatency0={linklatency} +netbw0={netbw} +profile-interval={profile_interval} +zero-out-dram +shmemportname0={shmemportname} +permissive-off +prog0={bootbin}""".format(
-                slotid=slotid, runtimeconf=runtimeconf, macaddr=macaddr,
-                linklatency=linklatency, netbw=netbw,
-                profile_interval=profile_interval, shmemportname=shmemportname,
-                bootbin=bootbin, tracefile=tracefile, trace_start=trace_start,
-                trace_end=trace_end)
-
-        if blkdev is not None:
-            driverArgs += """ +blkdev0={blkdev}""".format(blkdev=blkdev)
-
-        basecommand = """screen -S fsim{slotid} -d -m bash -c "script -f -c 'stty intr ^] && sudo ./{driver} {driverArgs} && stty intr ^c' uartlog"; sleep 1""".format(
-                slotid=slotid, driver=driver, driverArgs=driverArgs)
-
-        return basecommand
-
-
-    def get_supernode_boot_simulation_command(self, slotid, all_macs,
+    def get_boot_simulation_command(self, slotid, all_macs,
                                               all_rootfses, all_linklatencies,
                                               all_netbws, profile_interval,
                                               all_bootbinaries, trace_enable,
-                                              trace_start, trace_end,
-                                              all_shmemportnames):
+                                              trace_select, trace_start, trace_end,
+                                              trace_output_format,
+                                              autocounter_readrate, all_shmemportnames,
+                                              enable_zerooutdram,
+                                              print_start, print_end,
+                                              enable_print_cycle_prefix):
         """ return the command used to boot the simulation. this has to have
         some external params passed to it, because not everything is contained
         in a runtimehwconfig. TODO: maybe runtimehwconfig should be renamed to
         pre-built runtime config? It kinda contains a mix of pre-built and
         runtime parameters currently. """
 
-        tracefile = "+tracefile0=TRACEFILE" if trace_enable else ""
+        # TODO: supernode support
+        tracefile = "+tracefile=TRACEFILE" if trace_enable else ""
+        autocounterfile = "+autocounter-filename=AUTOCOUNTERFILE"
 
         # this monstrosity boots the simulator, inside screen, inside script
         # the sed is in there to get rid of newlines in runtime confs
@@ -145,25 +110,55 @@ class RuntimeHWConfig:
                     args.append("""{}{}={}""".format(plusarg, index, arg))
             return " ".join(args) + " "
 
+        def array_to_lognames(values, prefix):
+            names = ["{}{}".format(prefix, i) if val is not None else None
+                     for (i, val) in enumerate(values)]
+            return array_to_plusargs(names, "+" + prefix)
+
         command_macs = array_to_plusargs(all_macs, "+macaddr")
         command_rootfses = array_to_plusargs(all_rootfses, "+blkdev")
         command_linklatencies = array_to_plusargs(all_linklatencies, "+linklatency")
         command_netbws = array_to_plusargs(all_netbws, "+netbw")
         command_shmemportnames = array_to_plusargs(all_shmemportnames, "+shmemportname")
+        command_dromajo = "+drj_dtb=" + all_bootbinaries[0] + ".dtb" +  " +drj_bin=" + all_bootbinaries[0] + " +drj_rom=" + all_bootbinaries[0] + ".rom"
+
+        command_niclogs = array_to_lognames(all_macs, "niclog")
+        command_blkdev_logs = array_to_lognames(all_rootfses, "blkdev-log")
 
         command_bootbinaries = array_to_plusargs(all_bootbinaries, "+prog")
+        zero_out_dram = "+zero-out-dram" if (enable_zerooutdram) else ""
+        print_cycle_prefix = "+print-no-cycle-prefix" if not enable_print_cycle_prefix else ""
 
+        # TODO supernode support
+        dwarf_file_name = "+dwarf-file-name=" + all_bootbinaries[0] + "-dwarf"
 
-        basecommand = """screen -S fsim{slotid} -d -m bash -c "script -f -c 'stty intr ^] && sudo ./{driver} +permissive $(sed \':a;N;$!ba;s/\\n/ /g\' {runtimeconf}) +slotid={slotid} +profile-interval={profile_interval} +zero-out-dram {command_macs} {command_rootfses} +niclog0=niclog {tracefile} +trace-start0={trace_start} +trace-end0={trace_end} {command_linklatencies} {command_netbws}  {command_shmemportnames} +permissive-off {command_bootbinaries} && stty intr ^c' uartlog"; sleep 1""".format(
-            slotid=slotid, driver=driver, runtimeconf=runtimeconf,
+        # TODO: supernode support (tracefile, trace-select.. etc)
+        basecommand = """screen -S fsim{slotid} -d -m bash -c "script -f -c 'stty intr ^] && sudo sudo LD_LIBRARY_PATH=.:$LD_LIBRARY_PATH ./{driver} +permissive $(sed \':a;N;$!ba;s/\\n/ /g\' {runtimeconf}) +slotid={slotid} +profile-interval={profile_interval} {zero_out_dram} {command_macs} {command_rootfses} {command_niclogs} {command_blkdev_logs}  {tracefile} +trace-select={trace_select} +trace-start={trace_start} +trace-end={trace_end} +trace-output-format={trace_output_format} {dwarf_file_name} +autocounter-readrate={autocounter_readrate} {autocounterfile} {command_dromajo} {print_cycle_prefix} +print-start={print_start} +print-end={print_end} {command_linklatencies} {command_netbws}  {command_shmemportnames} +permissive-off {command_bootbinaries} && stty intr ^c' uartlog"; sleep 1""".format(
+            slotid=slotid,
+            driver=driver,
+            runtimeconf=runtimeconf,
             command_macs=command_macs,
             command_rootfses=command_rootfses,
+            command_niclogs=command_niclogs,
+            command_blkdev_logs=command_blkdev_logs,
             command_linklatencies=command_linklatencies,
             command_netbws=command_netbws,
             profile_interval=profile_interval,
+            zero_out_dram=zero_out_dram,
             command_shmemportnames=command_shmemportnames,
             command_bootbinaries=command_bootbinaries,
-            trace_start=trace_start, trace_end=trace_end, tracefile=tracefile)
+            trace_select=trace_select,
+            trace_start=trace_start,
+            trace_end=trace_end,
+            tracefile=tracefile,
+            trace_output_format=trace_output_format,
+            dwarf_file_name=dwarf_file_name,
+            autocounterfile=autocounterfile,
+            autocounter_readrate=autocounter_readrate,
+            command_dromajo=command_dromajo,
+            print_cycle_prefix=print_cycle_prefix,
+            print_start=print_start,
+            print_end=print_end)
 
         return basecommand
 
@@ -186,7 +181,14 @@ class RuntimeHWConfig:
         target_config = triplet_pieces[1]
         platform_config = triplet_pieces[2]
         rootLogger.info("Building FPGA software driver for " + str(self.get_deploytriplet_for_config()))
-        with prefix('cd ../'), prefix('source ./sourceme-f1-manager.sh'), prefix('cd sim/'), StreamLogger('stdout'), StreamLogger('stderr'):
+        with prefix('cd ../'), \
+             prefix('export RISCV={}'.format(os.getenv('RISCV', ""))), \
+             prefix('export PATH={}'.format(os.getenv('PATH', ""))), \
+             prefix('export LD_LIBRARY_PATH={}'.format(os.getenv('LD_LIBRARY_PATH', ""))), \
+             prefix('source ./sourceme-f1-manager.sh'), \
+             prefix('cd sim/'), \
+             StreamLogger('stdout'), \
+             StreamLogger('stderr'):
             localcap = None
             with settings(warn_only=True):
                 driverbuildcommand = """make DESIGN={} TARGET_CONFIG={} PLATFORM_CONFIG={} f1""".format(design, target_config, platform_config)
@@ -272,15 +274,35 @@ class InnerRuntimeConfiguration:
         self.profileinterval = int(runtime_dict['targetconfig']['profileinterval'])
         # Default values
         self.trace_enable = False
-        self.trace_start = 0
-        self.trace_end = -1
+        self.trace_select = "0"
+        self.trace_start = "0"
+        self.trace_end = "-1"
+        self.trace_output_format = "0"
+        self.autocounter_readrate = 0
+        self.zerooutdram = False
+        self.print_start = "0"
+        self.print_end = "-1"
+        self.print_cycle_prefix = True
+
         if 'tracing' in runtime_dict:
             self.trace_enable = runtime_dict['tracing'].get('enable') == "yes"
-            self.trace_start = int(runtime_dict['tracing'].get('startcycle', "0"))
-            self.trace_end = int(runtime_dict['tracing'].get('endcycle', "-1"))
+            self.trace_select = runtime_dict['tracing'].get('selector', "0")
+            self.trace_start = runtime_dict['tracing'].get('start', "0")
+            self.trace_end = runtime_dict['tracing'].get('end', "-1")
+            self.trace_output_format = runtime_dict['tracing'].get('output_format', "0")
+        if 'autocounter' in runtime_dict:
+            self.autocounter_readrate = int(runtime_dict['autocounter'].get('readrate', "0"))
         self.defaulthwconfig = runtime_dict['targetconfig']['defaulthwconfig']
+        if 'hostdebug' in runtime_dict:
+            self.zerooutdram = runtime_dict['hostdebug'].get('zerooutdram') == "yes"
+        if 'synthprint' in runtime_dict:
+            self.print_start = runtime_dict['synthprint'].get("start", "0")
+            self.print_end = runtime_dict['synthprint'].get("end", "-1")
+            self.print_cycle_prefix = runtime_dict['synthprint'].get("cycleprefix", "yes") == "yes"
 
         self.workload_name = runtime_dict['workload']['workloadname']
+        # an extra tag to differentiate workloads with the same name in results names
+        self.suffixtag = runtime_dict['workload']['suffixtag'] if 'suffixtag' in runtime_dict['workload'] else ""
         self.terminateoncompletion = runtime_dict['workload']['terminateoncompletion'] == "yes"
 
     def __str__(self):
@@ -310,7 +332,8 @@ class RuntimeConfig:
 
         # setup workload config obj, aka a list of workloads that can be assigned
         # to a server
-        self.workload = WorkloadConfig(self.innerconf.workload_name, self.launch_time)
+        self.workload = WorkloadConfig(self.innerconf.workload_name, self.launch_time,
+                                       self.innerconf.suffixtag)
 
         self.runfarm = RunFarm(self.innerconf.f1_16xlarges_requested,
                                self.innerconf.f1_4xlarges_requested,
@@ -328,8 +351,12 @@ class RuntimeConfig:
             self.workload, self.innerconf.linklatency,
             self.innerconf.switchinglatency, self.innerconf.netbandwidth,
             self.innerconf.profileinterval, self.innerconf.trace_enable,
-            self.innerconf.trace_start, self.innerconf.trace_end,
-            self.innerconf.terminateoncompletion)
+            self.innerconf.trace_select, self.innerconf.trace_start, self.innerconf.trace_end,
+            self.innerconf.trace_output_format,
+            self.innerconf.autocounter_readrate, self.innerconf.terminateoncompletion,
+            self.innerconf.zerooutdram,
+            self.innerconf.print_start, self.innerconf.print_end,
+            self.innerconf.print_cycle_prefix)
 
     def launch_run_farm(self):
         """ directly called by top-level launchrunfarm command. """

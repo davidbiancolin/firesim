@@ -2,6 +2,129 @@
 
 This changelog follows the format defined here: https://keepachangelog.com/en/1.0.0/
 
+## [1.10.0] - 2020-05-31
+Adds initial support for simulating multi-clock targets in FireSim.
+
+### Added
+* Support for simulating targets with multiple fixed-frequency clock (MC) domains (PR #441)
+  * All clocks must be generated using the RationalClockBridge
+  * See docs (PR #527)
+* Generalized trigger system (part of MC, PR #441) (resolves #497)
+  * See docs (PR #526)
+* Intelligent Bridge DRAM allocation (PR #433)
+  * Mix in `UsesHostDRAM` into a bridge that needs FPGA-DRAM
+* CircleCI  integration (PR #534, PR #574)
+* ScalaDoc for dev branch automatically published as part of CI (#569):
+  * Dev: https://fires.im/firesim/latest/api/
+  * Releases will reside at : https://fires.im/firesim/<version>/api
+* Add `expect` to `machine-launch` script (#562)
+* Add support for Dromajo co-simulation using an extended TracePort (currently only supported by BOOM) (#541,#556)
+
+### Changed
+* FIRRTL bumped to version 1.3, Chisel Bumped to version 3.3 (#549)
+  * Custom transforms now injected using the FIRRTL Dependency API
+* TracerV multiclock changes (PR #441)
+  * One TracerV per tile, maximum 7 instructions per tile (resolves #484)
+    * One output file per tile
+  * FirePerf now supports cores with IPC > 1 (BOOM)
+* Assert file no longer copied to manager, baked into driver via header (PR #441)
+* Bridges are now diplomatic (LazyModules) (PR #433)
+* Synthesized Printfs in different clocks domains are captured in different output files (#441) 
+* The default version of Verilator has changed to v4.034 (#550). Since this release adds enhanced support for Verilog timescales, the build detects if Verilator v4.034 or newer is visible in the build environment and sets default timescale flags appropriately.
+*  Elaboration output piped to stdout in `buildafi` (PR #433, resolves #440)
+* Midas-Level simulation no longer simulates the Shim layer, and instead simulates the module hierarchy rooted at FPGATop #548
+* Firesim target project use Chipyard's stage to generate RTL (#557)
+* Build setup updates (#544)
+  * Users can skip building a toolchain if supplying their own
+   * Now requires the user provide `$RISCV` when running under `--library`.
+  * Generated env.sh no longer sources chipyard's env.sh when using firesim-as-a-library
+* Allow `machine-launch` script to error, log, and use Git 2.2.4 (#538,#563)
+
+### Fixed
+* Manager will now report failures in AGFI creation (PR #433, resolves #327)
+* Ensure that the NBD kernel module (`nbd.ko`) is built with the non-debug config to avoid symbol compatibility issues (#571).
+* Use proper iuscommunity URL during machine launch (#563)
+* When using Chipyard-as-Top, properly pass `RISCV/LD_LIB/PATH` variables for `buildafi/infrasetup` (#560)
+* plus_arg reader exception thrown when compiling designs with FASED memory widths != 64 bits (PR #577)
+
+### Deprecated
+
+### Removed
+* FireSim generatorUtils and subclasses; replaced with Chipyard's stage (#557)
+
+
+## [1.9.0] - 2020-03-14
+
+### Added
+* TracerV + Flame Graph support from FirePerf ASPLOS 2020 paper (PR #496)
+  * Docs: https://docs.fires.im/en/latest/Advanced-Usage/Debugging-and-Profiling-on-FPGA/TracerV-with-FlameGraph.html
+* Pre-packaged AGFI for Gemmini NN accelerator
+
+### Changed
+* Significant overhaul / expansion of Debugging and Profiling on FPGA docs (PR #496)
+  * Link: https://docs.fires.im/en/latest/Advanced-Usage/Debugging-and-Profiling-on-FPGA/index.html
+* Unification of `FireSimDUT` with `chipyard.Top`, all default firesim configs are now extensions of default Chipyard configs (PR #491)
+  * Unification of Configs/Tops between Chipyard and FireSim. Arbitrary Chipyard designs can be imported into FireSim
+  * Users can define a FireSim version of a Chipyard config by building a TARGET_CONFIG that specifies WithFireSimDefaultBridges, WithFireSimDefaultMemModel, and WithFireSimConfigTweaks
+  * FireSimHarness moved to FireChip. Harness now uses Chipyard's BuildTop key to control which Top to build
+  * AGFI naming scheme changed. firesim -> firesim-rocket, fireboom -> firesim-boom
+* BridgeBinders system is now generalized as IOBinders for attaching Bridges to the target (PR #491)
+* Parallelized verilator Midas-level (ML) simulation compilation (PR #475)
+* Default fesvr-step size in ML simulation (PR #474)
+  * Passing no plusArg will have the same behavior as on the FPGA
+* Disable zero-out-dram by default;  expose in config_runtime.ini (PR #506)
+* Update docs to note previously added suffixtag feature (PR #510)
+
+### Fixed
+* Fixed synthesizing printfs at the top-level (PR #485)
+* Fixed FPGA-level simulation to properly generate GG-side PLL (PR #487)
+* Fixed a non-determinism bug due to unreset target-state (PR #499)
+* Fixed bug in ML-simulation of verilog black boxes in verilator (PR #499)
+* Fixed bug in manager that prevented use of f1.4xlarges with no_net_configs (PR #502)
+* Allow simulations without block devices (#519)
+
+### Deprecated
+* FireSimNoNIC design option removed, all examples now use FireSim design option
+  * Designs can specify inclusion/exclusion of NIC by setting icenet.NICKey, i.e. in TARGET_CONFIG rather than using a different design
+
+### Removed
+* Many excess configs in the sample_config inis were removed
+
+## [1.8.0] - 2020-01-25
+
+A more detailed account of everything included is included in the dev to master PR for this release: https://github.com/firesim/firesim/pull/413
+
+### Added
+* Black-box Verilog support via external clock-gating PR #388 
+  * For the transform to work, the Chisel `Blackbox` that wraps the Verilog IP must have a single clock input that can safely be clock-gated.
+  * The compiler that produces the decoupled simulator ("FAME Transform") automatically recognizes such blackboxes inside the target design.
+  * The compiler automatically gates the clock to the Verilog IP to ensure that it deterministically advances in lockstep with the rest of the simulator.
+  * This allows any Verilog module with a single clock input to be instantiated anywhere in the target design using the standard Chisel `Blackbox` interface.
+* Added chisel assertions to check for token irrevocability (non-determinism check) PR #416 
+  * Enable by adding `HostDebugFeatures` to your `PLATFORM_CONFIG`
+* Support for QCOW2 disk images in the manager. This means that FireSim simulations can now boot directly from qcow2 images---the default linux-uniform image is 40MB as a qcow2 image as opposed to 2GB as a raw .img. Firemarshal support for generating these images is upcoming. This is PR #415 and resolves #411 
+* AutoCounter and Trigger features from FirePerf paper (PR #437)
+
+### Changed
+* Default buildfarm instances changed from c5.4xlarges to z1d.2xlarges #464  
+* Update to Chipyard 1.1.0
+* Update FireMarshal to 1.8. This drastically reduces the default root filesystem image sizes and allows for FireMarshal workloads to be in any directory (not just the workloads/ directory).
+
+### Fixed
+* Fix managerinit aws configure bug introduced by tutorial modifications. managerinit now correctly runs aws configure again, there is no need to run it separately (docs are updated to reflect this)
+* Supernode: Copying back results from supernode simulations now works for all rootfses, not just the zeroeth rootfs of a supernode sim. PR #415 
+* Manager: No longer double-copies results for a node that is responsible for triggering a teardown in the networked simulation case. PR #415 
+
+### Deprecated
+* N/A
+
+### Removed
+* MIDAS submodule removed, now inlined in this repo ([MIDAS]-prefixed commits denote commits that originate from that repo) PR #400 
+
+## [1.7.0] - 2019-10-16
+
+A more detailed account of everything included is included in the dev to master PR for this release: https://github.com/firesim/firesim/pull/313
+
 ### Added
 * Upgraded MIDAS to Golden Gate (MIDAS II)
 * Better support for FireSim as a library. 

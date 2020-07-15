@@ -24,17 +24,24 @@ import TokenQueueConsts._
 
 case object LoopbackNIC extends Field[Boolean](false)
 
-class NICBridge(implicit p: Parameters) extends BlackBox with Bridge[HostPortIO[NICIOvonly], SimpleNICBridgeModule] {
-  val io = IO(Flipped(new NICIOvonly))
+class NICTargetIO extends Bundle {
+  val clock = Input(Clock())
+  val nic = Flipped(new NICIOvonly)
+}
+
+class NICBridge(implicit p: Parameters) extends BlackBox with Bridge[HostPortIO[NICTargetIO], SimpleNICBridgeModule] {
+  val io = IO(new NICTargetIO)
   val bridgeIO = HostPort(io)
   val constructorArg = None
   generateAnnotations()
 }
 
+
 object NICBridge {
-  def apply(nicIO: NICIOvonly)(implicit p: Parameters): NICBridge = {
+  def apply(clock: Clock, nicIO: NICIOvonly)(implicit p: Parameters): NICBridge = {
     val ep = Module(new NICBridge)
-    ep.io <> nicIO
+    ep.io.nic <> nicIO
+    ep.io.clock := clock
     ep
   }
 }
@@ -83,7 +90,7 @@ class BigTokenToNICTokenAdapter extends Module {
     val pcie_in = Flipped(DecoupledIO(UInt(512.W)))
   })
 
-  val pcieBundled = (new BIGToken).fromBits(io.pcie_in.bits)
+  val pcieBundled = io.pcie_in.bits.asTypeOf(new BIGToken)
 
   val xactHelper = DecoupledHelper(io.htnt.ready, io.pcie_in.valid)
 
@@ -174,81 +181,82 @@ class HostToNICTokenGenerator(nTokens: Int)(implicit p: Parameters) extends Modu
   when (seedDone) { state := s_forward }
 }
 
-class SimpleNICBridgeModule(implicit p: Parameters) extends BridgeModule[HostPortIO[NICIOvonly]]()(p)
-    with BidirectionalDMA {
-  val io = IO(new WidgetIO)
-  val hPort = IO(HostPort(Flipped(new NICIOvonly)))
-  // DMA mixin parameters
-  lazy val fromHostCPUQueueDepth = TOKEN_QUEUE_DEPTH
-  lazy val toHostCPUQueueDepth   = TOKEN_QUEUE_DEPTH
-  // Biancolin: Need to look into this
-  lazy val dmaSize = BigInt((BIG_TOKEN_WIDTH / 8) * TOKEN_QUEUE_DEPTH)
+class SimpleNICBridgeModule(implicit p: Parameters) extends BridgeModule[HostPortIO[NICTargetIO]]()(p) {
+  lazy val module = new BridgeModuleImp(this) with BidirectionalDMA {
+    val io = IO(new WidgetIO)
+    val hPort = IO(HostPort(new NICTargetIO))
+    // DMA mixin parameters
+    lazy val fromHostCPUQueueDepth = TOKEN_QUEUE_DEPTH
+    lazy val toHostCPUQueueDepth   = TOKEN_QUEUE_DEPTH
+    // Biancolin: Need to look into this
+    lazy val dmaSize = BigInt((BIG_TOKEN_WIDTH / 8) * TOKEN_QUEUE_DEPTH)
 
-  val htnt_queue = Module(new Queue(new HostToNICToken, 10))
-  val ntht_queue = Module(new Queue(new NICToHostToken, 10))
+    val htnt_queue = Module(new Queue(new HostToNICToken, 10))
+    val ntht_queue = Module(new Queue(new NICToHostToken, 10))
 
-  val bigtokenToNIC = Module(new BigTokenToNICTokenAdapter)
-  val NICtokenToBig = Module(new NICTokenToBigTokenAdapter)
+    val bigtokenToNIC = Module(new BigTokenToNICTokenAdapter)
+    val NICtokenToBig = Module(new NICTokenToBigTokenAdapter)
 
-  val target = hPort.hBits
-  val tFireHelper = DecoupledHelper(hPort.toHost.hValid,
-                                    hPort.fromHost.hReady)
-  val tFire = tFireHelper.fire
+    val target = hPort.hBits.nic
+    val tFireHelper = DecoupledHelper(hPort.toHost.hValid,
+                                      hPort.fromHost.hReady)
+    val tFire = tFireHelper.fire
 
-  if (p(LoopbackNIC)) {
-    val tokenGen = Module(new HostToNICTokenGenerator(10))
-    htnt_queue.io.enq <> tokenGen.io.out
-    tokenGen.io.in <> ntht_queue.io.deq
-    NICtokenToBig.io.ntht.valid := false.B
-    NICtokenToBig.io.ntht.bits := DontCare
-    bigtokenToNIC.io.htnt.ready := false.B
-  } else {
-    NICtokenToBig.io.ntht <> ntht_queue.io.deq
-    htnt_queue.io.enq <> bigtokenToNIC.io.htnt
+    if (p(LoopbackNIC)) {
+      val tokenGen = Module(new HostToNICTokenGenerator(10))
+      htnt_queue.io.enq <> tokenGen.io.out
+      tokenGen.io.in <> ntht_queue.io.deq
+      NICtokenToBig.io.ntht.valid := false.B
+      NICtokenToBig.io.ntht.bits := DontCare
+      bigtokenToNIC.io.htnt.ready := false.B
+    } else {
+      NICtokenToBig.io.ntht <> ntht_queue.io.deq
+      htnt_queue.io.enq <> bigtokenToNIC.io.htnt
+    }
+
+    hPort.toHost.hReady := ntht_queue.io.enq.ready
+    ntht_queue.io.enq.valid := hPort.toHost.hValid
+    ntht_queue.io.enq.bits.data_out := target.out.bits
+    ntht_queue.io.enq.bits.data_out_valid := target.out.valid
+    ntht_queue.io.enq.bits.data_in_ready := true.B //target.in.ready
+
+    hPort.fromHost.hValid := htnt_queue.io.deq.valid
+    htnt_queue.io.deq.ready := hPort.fromHost.hReady
+    target.in.bits := htnt_queue.io.deq.bits.data_in
+    target.in.valid := htnt_queue.io.deq.bits.data_in_valid
+    //target.out.ready := htnt_queue.io.deq.bits.data_out_ready
+
+    bigtokenToNIC.io.pcie_in <> incomingPCISdat.io.deq
+    outgoingPCISdat.io.enq <> NICtokenToBig.io.pcie_out
+
+
+    if (p(LoopbackNIC)) {
+      target.rlimit.size := 8.U
+      target.rlimit.period := 0.U
+      target.rlimit.inc := 1.U
+      target.macAddr := 0.U
+    } else {
+      val macAddrRegUpper = Reg(UInt(32.W))
+      val macAddrRegLower = Reg(UInt(32.W))
+      val rlimitSettings = Reg(UInt(32.W))
+      val pauseThreshold = Reg(UInt(32.W))
+      val pauseTimes = Reg(UInt(32.W))
+
+      target.rlimit := rlimitSettings.asTypeOf(new RateLimiterSettings)
+      target.macAddr := Cat(macAddrRegUpper, macAddrRegLower)
+      target.pauser.threshold := pauseThreshold(15, 0)
+      target.pauser.quanta := pauseTimes(15, 0)
+      target.pauser.refresh := pauseTimes(31, 16)
+
+      attach(macAddrRegUpper, "macaddr_upper", WriteOnly)
+      attach(macAddrRegLower, "macaddr_lower", WriteOnly)
+      attach(rlimitSettings, "rlimit_settings", WriteOnly)
+      attach(pauseThreshold, "pause_threshold", WriteOnly)
+      attach(pauseTimes, "pause_times", WriteOnly)
+    }
+
+    genROReg(!tFire, "done")
+
+    genCRFile()
   }
-
-  hPort.toHost.hReady := ntht_queue.io.enq.ready
-  ntht_queue.io.enq.valid := hPort.toHost.hValid
-  ntht_queue.io.enq.bits.data_out := target.out.bits
-  ntht_queue.io.enq.bits.data_out_valid := target.out.valid
-  ntht_queue.io.enq.bits.data_in_ready := true.B //target.in.ready
-
-  hPort.fromHost.hValid := htnt_queue.io.deq.valid
-  htnt_queue.io.deq.ready := hPort.fromHost.hReady
-  target.in.bits := htnt_queue.io.deq.bits.data_in
-  target.in.valid := htnt_queue.io.deq.bits.data_in_valid
-  //target.out.ready := htnt_queue.io.deq.bits.data_out_ready
-
-  bigtokenToNIC.io.pcie_in <> incomingPCISdat.io.deq
-  outgoingPCISdat.io.enq <> NICtokenToBig.io.pcie_out
-
-
-  if (p(LoopbackNIC)) {
-    target.rlimit.size := 8.U
-    target.rlimit.period := 0.U
-    target.rlimit.inc := 1.U
-    target.macAddr := 0.U
-  } else {
-    val macAddrRegUpper = Reg(UInt(32.W))
-    val macAddrRegLower = Reg(UInt(32.W))
-    val rlimitSettings = Reg(UInt(32.W))
-    val pauseThreshold = Reg(UInt(32.W))
-    val pauseTimes = Reg(UInt(32.W))
-
-    target.rlimit := (new RateLimiterSettings).fromBits(rlimitSettings)
-    target.macAddr := Cat(macAddrRegUpper, macAddrRegLower)
-    target.pauser.threshold := pauseThreshold(15, 0)
-    target.pauser.quanta := pauseTimes(15, 0)
-    target.pauser.refresh := pauseTimes(31, 16)
-
-    attach(macAddrRegUpper, "macaddr_upper", WriteOnly)
-    attach(macAddrRegLower, "macaddr_lower", WriteOnly)
-    attach(rlimitSettings, "rlimit_settings", WriteOnly)
-    attach(pauseThreshold, "pause_threshold", WriteOnly)
-    attach(pauseTimes, "pause_times", WriteOnly)
-  }
-
-  genROReg(!tFire, "done")
-
-  genCRFile()
 }

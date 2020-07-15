@@ -40,24 +40,22 @@ parallel, with the parameters listed in the relevant section of the
 ``deploy/config_build_recipes.ini`` file. Here you can set parameters of the simulated
 system, and also select the type of instance on which the Vivado build will be
 deployed. From our experimentation, there are diminishing returns using
-anything above a ``c5.4xlarge``, so we default to that.
+anything above a ``z1d.2xlarge``, so we default to that. If you do wish to use a
+different build instance type keep in mind that Vivado will consume in excess
+of 32 GiB for large designs.
 
-To start out, let's build a simple design, ``firesim-singlecore-no-nic-lbp``.
-This is a design that has one core, no nic, and uses the latency-bandwidth pipe
-memory model. To do so, comment out all of the other build entries in ``deploy/config_build.ini``, besides the one we want.. So, you should
+
+To start out, let's build a simple design, ``firesim-rocket-quadcore-no-nic-l2-llc4mb-ddr3``.
+This is a design that has four cores, no nic, and uses the 4MB LLC + DDR3 memory model.
+To do so, comment out all of the other build entries in ``deploy/config_build.ini``, besides the one we want. So, you should
 end up with something like this (a line beginning with a ``#`` is a comment):
 
 ::
 
-	[builds]
-	# this section references builds defined in config_build_recipes.ini
-	# if you add a build here, it will be built when you run buildafi
-	#firesim-singlecore-nic-lbp
-	firesim-singlecore-no-nic-lbp
-	#firesim-quadcore-nic-lbp
-	#firesim-quadcore-no-nic-lbp
-	#firesim-quadcore-nic-l2-llc4mb-ddr3
-	#firesim-quadcore-no-nic-l2-llc4mb-ddr3
+   [builds]
+   # this section references builds defined in config_build_recipes.ini
+   # if you add a build here, it will be built when you run buildafi
+   firesim-rocket-quadcore-no-nic-l2-llc4mb-ddr3
 
 
 Running a Build

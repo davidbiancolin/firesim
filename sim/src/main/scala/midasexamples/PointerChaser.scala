@@ -4,7 +4,7 @@ package firesim.midasexamples
 
 import chisel3._
 import chisel3.util._
-import chisel3.experimental.{withClock, RawModule}
+import chisel3.experimental.{withClock}
 import junctions._
 import freechips.rocketchip.config.{Parameters, Field}
 
@@ -113,8 +113,8 @@ class PointerChaser(implicit val p: Parameters) extends RawModule {
     val fasedInstance =  Module(new FASEDBridge(CompleteConfig(LatencyPipeConfig(BaseParams(16,16)), p(NastiKey))))
     fasedInstance.io.axi4 <> pointerChaser.io.nasti
     fasedInstance.io.reset := reset
-    val peekPokeBridge = PeekPokeBridge(reset,
-                                           ("io_startAddr", pointerChaser.io.startAddr),
-                                           ("io_result", pointerChaser.io.result))
+    val peekPokeBridge = PeekPokeBridge(clock, reset,
+                                        ("io_startAddr", pointerChaser.io.startAddr),
+                                        ("io_result", pointerChaser.io.result))
   }
 }
