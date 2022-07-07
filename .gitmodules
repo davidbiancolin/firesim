@@ -34,3 +34,6 @@
 [submodule "sim/firesim-lib/src/main/cc/lib/libdwarf"]
 	path = sim/firesim-lib/src/main/cc/lib/libdwarf
 	url = git://git.code.sf.net/p/libdwarf/code
+[submodule "testsubmodule"]
+	path = testsubmodule
+	url = https://github.com/ucb-bar/testchipip.git
